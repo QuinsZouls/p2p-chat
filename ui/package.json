@@ -1,0 +1,52 @@
+{
+  "name": "service",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@craco/craco": "5.8.0",
+    "@testing-library/jest-dom": "4.2.4",
+    "@testing-library/react": "9.3.2",
+    "@testing-library/user-event": "7.1.2",
+    "antd": "4.9.2",
+    "antd-dayjs-webpack-plugin": "1.0.1",
+    "apisauce": "1.1.1",
+    "connected-react-router": "6.8.0",
+    "craco-less": "1.17.0",
+    "dayjs": "1.9.6",
+    "history": "4.10.1",
+    "prop-types": "15.7.2",
+    "react": "16.13.1",
+    "react-dom": "16.13.1",
+    "react-redux": "7.2.0",
+    "react-router-dom": "5.1.2",
+    "react-scripts": "3.4.1",
+    "redux": "4.0.5",
+    "redux-logger": "3.0.6",
+    "redux-persist": "6.0.0",
+    "redux-persist-seamless-immutable": "2.0.0",
+    "redux-thunk": "2.3.0",
+    "reduxsauce": "1.1.2",
+    "seamless-immutable": "7.1.4"
+  },
+  "scripts": {
+    "start": "craco start",
+    "build": "craco build",
+    "test": "craco test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": "react-app"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
