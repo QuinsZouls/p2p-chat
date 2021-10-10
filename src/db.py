@@ -20,3 +20,9 @@ class DbBridge:
     cursor.execute("CREATE TABLE message(id integer PRIMARY KEY, content text, attachment integer, author integer, created_at integer, chat_id text)")
     #Apply changes
     self.connection.commit()
+  def query(self, statement):
+    cursor = self.connection.cursor()
+    cursor.execute(statement)
+    self.connection.commit()
+  def close(self):
+    self.connection.close()

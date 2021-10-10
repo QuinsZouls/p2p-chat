@@ -6,7 +6,8 @@ import websockets
 import os
 import threading
 # Env
-SERVER_WS_PORT = os.getenv('SERVER_PORT', 6789)
+SERVER_WS_PORT = os.getenv('SERVER_WS_PORT', 6789)
+SERVER_SK_PORT = os.getenv('SERVER_WS_PORT', 6790)
 SERVER_URL = os.getenv('SERVER_URL', "localhost")
 BUFFER_SIZE = 4096
 # Setup logging
@@ -19,61 +20,55 @@ CONNECTED_RESPONSE = {
 
 class WebsocketServer():
     #Start asyncio process
-    def __init__(self):
-        self.server_instance = websockets.serve(self.listen, SERVER_URL, SERVER_WS_PORT)
     def run(self):
         print('starting Websocket')
         logging.info("Starting Websocket service")
-        asyncio.get_event_loop().run_until_complete(self.server_instance)
+        server =  websockets.serve(self.listen, SERVER_URL, SERVER_WS_PORT)
+        asyncio.get_event_loop().run_until_complete(server)
         asyncio.get_event_loop().run_forever()
 
-    async def listen(self, websocket):
-        try:
-            await websocket.send(json.dumps(CONNECTED_RESPONSE))
-            async for message in websocket:
-                data = json.loads(message)
-                self.requestHandler(websocket, data)
-        except:
-            logging.error("Error starting server")
+    async def listen(self, websocket, path):
+        while True:
+            try:
+                await websocket.send(json.dumps(CONNECTED_RESPONSE))
+                async for message in websocket:
+                    data = json.loads(message)
+                    self.requestHandler(websocket, data)
+            except:
+                logging.error("Error in ws request")
     def requestHandler(self, websocket, request):
-        if request['option'] == 'sendImage':
-            _thread = threading.Thread(target=asyncio.run, args=(self.messageHandler(request['image']),))
+        if request['option'] == 'message':
+            _thread = threading.Thread(target=asyncio.run, args=(self.messageHandler(request),))
             _thread.start()
+        elif request['option'] == 'register':
+            pass
     async def messageHandler(self, request):
         print(request)
+    def registerUser(self, data):
+        pass
 class SocketServer():
     def __init__(self):
-        self.socket_instance = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            self.socket_instance = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        except:
+            logging.exception('Error initializing socket service')
     def run(self):
         print('starting socket')
         logging.info("Starting Socket service")
-        self.socket_instance.bind(("localhost", 6791))
+        self.socket_instance.bind(("localhost", SERVER_SK_PORT))
         self.socket_instance.listen(10)
-        asyncio.get_event_loop().run_until_complete(self.listen)
-        asyncio.get_event_loop().run_forever()
+        self.listen()
     def listen(self):
-        try:
+        while True:
+            try:
                 # accept connections from outside
                 (clientsocket, address) = self.socket_instance.accept()
                 # now do something with the clientsocket
                 # in this case, we'll pretend this is a threaded server
-                request = clientsocket.recv(BUFFER_SIZE).decode()
+                request =  clientsocket.recv(BUFFER_SIZE).decode()
                 parsedReq = json.loads(request)
                 if parsedReq['option'] == 'message':
                     #Process menssage
                     print(parsedReq)
-        except:
-            logging.exception("Unknown error")
-
-class CommunicationDriver:
-    def start(self):
-        try:
-            websocket = WebsocketServer()
-            socket = SocketServer()
-            _thread1 =  threading.Thread(target=asyncio.run, args=(websocket.run(),))
-            _thread2 =  threading.Thread(target=asyncio.run, args=(socket.run(),))
-            _thread2.start()
-            _thread1.start()
-
-        except:
-            logging.exception("Error with communication thread")
+            except:
+                logging.exception("Unknown error")
