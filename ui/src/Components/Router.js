@@ -6,6 +6,7 @@ import PropTypes from 'prop-types';
 
 import Login from '../Screens/Login';
 import Dashboard from '../Screens/Dashboard';
+import RegisterScreen from '../Screens/Register';
 
 import ProtectedRoute from './ProtectedRoute';
 
@@ -16,6 +17,18 @@ const Router = ({ token }) => {
         exact
         path="/"
         component={Login}
+        token={token === '' ? '1' : ''}
+        redirect={{
+          pathname: '/chats',
+          state: {
+            key: 'dashboard',
+          },
+        }}
+      />
+      <ProtectedRoute
+        exact
+        path="/register"
+        component={RegisterScreen}
         token={token === '' ? '1' : ''}
         redirect={{
           pathname: '/chats',

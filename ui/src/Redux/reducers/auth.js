@@ -3,7 +3,7 @@ import { createReducer, createActions } from 'reduxsauce';
 
 const { Types, Creators } = createActions({
   authRequest: [],
-  authSuccess: ['user'],
+  authSuccess: ['token'],
   authFailure: ['error'],
   authClear: [],
 });
@@ -15,12 +15,12 @@ const INITIAL_STATE = immutable({
 });
 
 function success(state, action) {
-  let { user } = action;
+  let { token } = action;
   return state.merge({
     loading: false,
     error: false,
     errorMessage: null,
-    user,
+    token,
   });
 }
 function request(state, action) {
