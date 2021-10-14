@@ -17,7 +17,8 @@
     "process": "readonly",
     "navigator": "readonly",
     "URL": "readonly",
-    "console": "readonly"
+    "console": "readonly",
+    "WebSocket": "readonly"
   },
   "extends": [
     "eslint:recommended"
