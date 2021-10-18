@@ -47,6 +47,7 @@ class WebsocketServer():
                 await websocket.close()
             except:
                 logging.exception("Error in ws request")
+    # Main handler
 
     def requestHandler(self, websocket, request):
         if request['option'] == 'message':
@@ -126,7 +127,8 @@ class WebsocketServer():
         if destination['ip'] == SERVER_URL and str(destination['port']) == str(SERVER_SK_PORT):
             attachment = 0
             if 'attachment' in data:
-                attachment = self.saveImage(data['attachment'], author['user'])
+                attachment, _ = self.saveImage(
+                    data['attachment'], author['user'])
             # Generamos la conversación para el anfitrion
             if data['create_chat']:
                 messageId = random.randint(0, 99999999)
@@ -166,8 +168,32 @@ class WebsocketServer():
             data['user_id'] = author['user']
             await self.getChats(ws, data)
         else:
-            # TODO enviar mensajes foráneos
-            print('MSG Foreing')
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            # Connect to foreing node
+            s.connect((destination['ip'], int(destination['port'])))
+
+            if 'attachment' in data:
+                s.send(json.dumps({
+                    "option": "message",
+                    "data": data
+                }).encode(), BUFFER_SIZE)
+                attachment, path = self.saveImage(
+                    data['attachment'], author['user'])
+                with open(path, "rb") as f:
+                    while True:
+                        # read the bytes from the file
+                        bytes_read = f.read(BUFFER_SIZE)
+                        if not bytes_read:
+                            # file transmitting is done
+                            break
+                        # we use sendall to assure transimission in
+                        s.sendall(bytes_read)
+                del data['attachment']['raw']
+            else:
+                s.send(json.dumps({
+                    "option": "message",
+                    "data": data
+                }).encode(), BUFFER_SIZE)
 
     async def registerUser(self, ws, data):
         db = DbBridge()
@@ -232,7 +258,14 @@ class WebsocketServer():
                 print('El usuario no esta disponible')
         else:
             # TODO crear conexión hacia el socket destino
-            print('mensaje foráneo')
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            # Connect to foreing node
+            s.connect((origin['ip'], int(origin['port'])))
+
+            s.send(json.dumps({
+                "option": "enable-communiaction",
+                "data": data
+            }).encode(), BUFFER_SIZE)
 
     async def acceptCommunication(self, ws, data):
         db = DbBridge()
@@ -293,7 +326,7 @@ class WebsocketServer():
         db.query(
             f"INSERT INTO multimedia VALUES({multimedia_id}, '{attachment['type']}', '{attachment['size']}', {user_id}, {attachment['id']}, '{path}')")
         db.close()
-        return multimedia_id
+        return multimedia_id, path
 
 
 class SocketServer():
@@ -308,12 +341,90 @@ class SocketServer():
         print('starting socket')
         logging.info("Starting Socket service")
         self.socket_instance.bind((SERVER_URL, SERVER_SK_PORT))
-        self.socket_instance.listen(10)
+        self.socket_instance.listen(100)
         self.listen()
 
     def stop(self):
         self.socket_instance.close()
         os._exit(0)
+
+    def recvFile(self, client, data, user_id):
+        extension = '.png'
+        multimedia_id = random.randint(0, 99999999)
+        db = DbBridge()
+        if data['type'] == 'image/jpg':
+            extension = '.jpg'
+        path = f"./multimedia/{data['id']}{extension}"
+        with open(path, "wb") as f:
+            while True:
+                # read 1024 bytes from the socket (receive)
+                bytes_read = client.recv(BUFFER_SIZE)
+                if not bytes_read:
+                    break
+                f.write(bytes_read)
+        client.close()
+        db.query(
+            f"INSERT INTO multimedia VALUES({multimedia_id}, '{data['type']}', '{data['size']}', {user_id}, {data['id']}, '{path}')")
+        db.close()
+        return multimedia_id
+
+    async def handleMessage(self, client, data):
+        db = DbBridge()
+        destination = decodeUserAddress(data['to'])
+        author = decodeUserAddress(data['from'])
+        attachment = 0
+        if 'attachment' in data:
+            attachment = self.recvFile(
+                client, data['attachment'], author['user'])
+        # Generamos la conversación para el anfitrion
+        if data['create_chat']:
+            messageId = random.randint(0, 99999999)
+            chat_id = random.randint(0, 99999999)
+            db.query(
+                f"INSERT INTO chat VALUES({chat_id}, '{author['user']}', '{data['contact_id']}'  )")
+            db.query(
+                f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {chat_id} )")
+        else:
+            messageId = random.randint(0, 99999999)
+            db.query(
+                f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {data['chat_id']} )")
+        chat_id_foreing = db.getOne(
+            f"SELECT * FROM chat WHERE user_id={destination['user']}")
+        if chat_id_foreing == None:
+            # Creamos el chat
+            chat_id = random.randint(0, 99999999)
+            messageId = random.randint(0, 99999999)
+            contact = db.getOne(
+                f"SELECT * FROM contact WHERE user_id={destination['user']}")
+            db.query(
+                f"INSERT INTO chat VALUES({chat_id}, '{destination['user']}', '{contact[0]}'  )")
+            db.query(
+                f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {chat_id} )")
+        else:
+            messageId = random.randint(0, 99999999)
+            db.query(
+                f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {chat_id_foreing[0]} )")
+        db.close()
+        try:
+            if connectionsClients[str(destination['user'])] != None:
+                data['user_id'] = destination['user']
+                # get chats
+        except KeyError:
+            logging.info('El usuario no esta disponible')
+
+    async def enableComunication(self, client, data):
+        origin = decodeUserAddress(data['destination'])
+        try:
+            if connectionsClients[str(origin['user'])] != None:
+                logging.info('El usuario esta connectado')
+                await connectionsClients[str(origin['user'])].send(json.dumps({
+                    "status": "ok",
+                    "type": "connectionRequest",
+                    "response": data['from']
+                }))
+            client.close()
+        except KeyError:
+            logging.info('El usuario no esta disponible')
 
     def listen(self):
         while True:
@@ -326,7 +437,15 @@ class SocketServer():
                 parsedReq = json.loads(request)
                 if parsedReq['option'] == 'message':
                     # Process menssage
-                    print(parsedReq)
+                    _thread = threading.Thread(target=asyncio.run, args=(
+                        self.handleMessage(clientsocket, parsedReq['data']),))
+                    _thread.start()
+                    _thread.join()
+                elif parsedReq['option'] == 'enable-communiaction':
+                    _thread = threading.Thread(target=asyncio.run, args=(
+                        self.enableComunication(clientsocket, parsedReq['data']),))
+                    _thread.start()
+                    _thread.join()
             except KeyboardInterrupt:
                 self.stop()
             except:
