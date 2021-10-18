@@ -32,7 +32,6 @@ const RegisterScreen = () => {
           connection.close();
           break;
         default:
-          setLoading(false);
           console.log(response);
       }
     };

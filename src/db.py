@@ -12,7 +12,7 @@ class DbBridge:
     #Creamos la tabla para los usuarios
     cursor.execute("CREATE TABLE IF NOT EXISTS user(id integer PRIMARY KEY, username text, password text)")
     #Creamos la tabla para los contactos
-    cursor.execute("CREATE TABLE IF NOT EXISTS contact(id integer PRIMARY KEY, label text, destination text, user_id integer)")
+    cursor.execute("CREATE TABLE IF NOT EXISTS contact(id integer PRIMARY KEY, label text, destination text, user_id integer, status integer)")
     #Creamos la tabla para los chats
     cursor.execute("CREATE TABLE IF NOT EXISTS chat(id integer PRIMARY KEY, user_id integer, contact_id integer)")
     #Creamos la tabla de multimedia
@@ -29,6 +29,11 @@ class DbBridge:
     cursor = self.connection.cursor()
     cursor.execute(statement)
     return cursor.fetchone()
+  def getAll(self, statement):
+    cursor = self.connection.cursor()
+    cursor.execute(statement)
+    rows = cursor.fetchall()
+    return rows
   def rowCount(self, statement):
     cursor = self.connection.cursor()
     cursor.execute(statement)
