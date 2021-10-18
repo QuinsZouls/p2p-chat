@@ -286,10 +286,10 @@ const DashboardScreen = () => {
       </Modal>
       <div className="content">
         <Row gutter={[10, 10]} style={{ height: '100%' }}>
-          <Col span={5} className="chats-side">
+          <Col xl={5} xs={8} className="chats-side">
             {_renderViews()}
           </Col>
-          <Col span={19} className="chat-container">
+          <Col xl={19} xs={16} className="chat-container">
             {currentContact !== null && (
               <ChatContainer
                 contact={currentContact}
