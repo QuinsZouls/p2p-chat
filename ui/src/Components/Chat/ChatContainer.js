@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Input, Row, Col, Button, List } from 'antd';
+import { Input, Row, Col, Button, List, Image } from 'antd';
 import { PaperClipOutlined, CloseCircleOutlined } from '@ant-design/icons';
 
 import { minimizeAddress, getBase64 } from '../../Utils/url';
@@ -71,7 +71,7 @@ const ChatContainer = ({ contact, chat, connection, auth }) => {
                 <div className="message-content">
                   {item.attachment !== 0 ? (
                     <div>
-                      <img src={item.multimedia} alt="attachment" />
+                      <Image src={item.multimedia} alt="attachment" />
                       <p>{item.content}</p>
                     </div>
                   ) : (
