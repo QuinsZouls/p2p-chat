@@ -50,6 +50,7 @@ class WebsocketServer():
     # Main handler
 
     def requestHandler(self, websocket, request):
+        global connectionsClients
         if request['option'] == 'message':
             _thread = threading.Thread(target=asyncio.run, args=(
                 self.messageHandler(websocket, request['data']),))
@@ -159,6 +160,7 @@ class WebsocketServer():
                     f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {chat_id_foreing[0]} )")
             db.close()
             try:
+                global connectionsClients
                 if connectionsClients[str(destination['user'])] != None:
                     data['user_id'] = destination['user']
                     await self.getChats(connectionsClients[str(destination['user'])], data)
@@ -247,6 +249,7 @@ class WebsocketServer():
         origin = decodeUserAddress(data['destination'])
         if origin['ip'] == SERVER_URL and str(origin['port']) == str(SERVER_SK_PORT):
             try:
+                global connectionsClients
                 if connectionsClients[str(origin['user'])] != None:
                     print('El usuario esta connectado')
                     await connectionsClients[str(origin['user'])].send(json.dumps({
@@ -280,6 +283,7 @@ class WebsocketServer():
         db.query(f"UPDATE contact SET status = 1 WHERE id = {contact_id} ")
         db.close()
         try:
+            global connectionsClients
             if connectionsClients[str(target['user'])] != None:
                 data['user_id'] = target['user']
                 await connectionsClients[str(target['user'])].send(json.dumps({
@@ -407,6 +411,7 @@ class SocketServer():
                 f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {chat_id_foreing[0]} )")
         db.close()
         try:
+            global connectionsClients
             if connectionsClients[str(destination['user'])] != None:
                 data['user_id'] = destination['user']
                 # get chats
@@ -417,6 +422,7 @@ class SocketServer():
         origin = decodeUserAddress(data['destination'])
         print(data)
         try:
+            global connectionsClients
             if connectionsClients[str(origin['user'])] != None:
                 logging.info('El usuario esta connectado')
                 await connectionsClients[str(origin['user'])].send(json.dumps({
@@ -437,6 +443,7 @@ class SocketServer():
                 # in this case, we'll pretend this is a threaded server
                 request = clientsocket.recv(BUFFER_SIZE).decode()
                 parsedReq = json.loads(request)
+                global connectionsClients
                 print(connectionsClients)
                 if parsedReq['option'] == 'message':
                     # Process menssage
