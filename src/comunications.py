@@ -6,6 +6,7 @@ import websockets
 import os
 import threading
 import random
+from websocket import create_connection
 from urllib import request
 from db import DbBridge
 from utils import hashPassword, validatePassword, getUserAddress, normalizeContacts, decodeUserAddress, normalizeChats, normalizeMessages, getDataUriPathImage
@@ -419,13 +420,12 @@ class SocketServer():
         origin = decodeUserAddress(data['destination'])
         print(data)
         try:
-            if self.connections[str(origin['user'])] != None:
-                logging.info('El usuario esta connectado')
-                await self.connections[str(origin['user'])].send(json.dumps({
-                    "status": "ok",
-                    "type": "connectionRequest",
-                    "response": data['from']
+            ws_client = create_connection(f"ws://{SERVER_URL}:{SERVER_WS_PORT}/")
+            ws_client.send(json.dumps({
+                    "option": "communication-request",
+                    "data": data
                 }))
+            ws_client.close()
             client.close()
         except KeyError:
             logging.info('El usuario no esta disponible')
