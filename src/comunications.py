@@ -265,7 +265,8 @@ class WebsocketServer():
             s.send(json.dumps({
                 "option": "enable-communiaction",
                 "data": data
-            }).encode(), BUFFER_SIZE)
+            }).encode())
+            print("Mensaje enviado")
 
     async def acceptCommunication(self, ws, data):
         db = DbBridge()
@@ -414,6 +415,7 @@ class SocketServer():
 
     async def enableComunication(self, client, data):
         origin = decodeUserAddress(data['destination'])
+        print(data)
         try:
             if connectionsClients[str(origin['user'])] != None:
                 logging.info('El usuario esta connectado')
@@ -435,7 +437,7 @@ class SocketServer():
                 # in this case, we'll pretend this is a threaded server
                 request = clientsocket.recv(BUFFER_SIZE).decode()
                 parsedReq = json.loads(request)
-                print(request)
+                print(connectionsClients)
                 if parsedReq['option'] == 'message':
                     # Process menssage
                     _thread = threading.Thread(target=asyncio.run, args=(
