@@ -435,6 +435,7 @@ class SocketServer():
                 # in this case, we'll pretend this is a threaded server
                 request = clientsocket.recv(BUFFER_SIZE).decode()
                 parsedReq = json.loads(request)
+                print(request)
                 if parsedReq['option'] == 'message':
                     # Process menssage
                     _thread = threading.Thread(target=asyncio.run, args=(
