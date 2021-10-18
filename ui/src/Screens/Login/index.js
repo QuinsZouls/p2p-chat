@@ -25,6 +25,7 @@ const LoginScreen = () => {
         case 'authSuccessful':
           setLoading(false);
           post(response.response);
+          console.log('Auth Success');
           connection.close();
           break;
         case 'error':
@@ -33,7 +34,6 @@ const LoginScreen = () => {
           connection.close();
           break;
         default:
-          setLoading(false);
           console.log(response);
       }
     };
