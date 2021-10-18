@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Input, Row, Col, Button, List } from 'antd';
-import { PaperClipOutlined } from '@ant-design/icons';
+import { PaperClipOutlined, CloseCircleOutlined } from '@ant-design/icons';
 
-import { minimizeAddress } from '../../Utils/url';
+import { minimizeAddress, getBase64 } from '../../Utils/url';
 const ChatContainer = ({ contact, chat, connection, auth }) => {
   const [text, setText] = useState('');
+  const [imageRaw, setImageRaw] = useState(null);
   const _handleSendMessage = () => {
     let message;
     if (chat === null) {
@@ -27,13 +28,27 @@ const ChatContainer = ({ contact, chat, connection, auth }) => {
         create_chat: false,
       };
     }
+    if (imageRaw !== null) {
+      message.attachment = imageRaw;
+    }
     setText('');
+    setImageRaw(null);
     connection.send(
       JSON.stringify({
         option: 'message',
         data: message,
       })
     );
+  };
+  const _handleFileInput = async (e) => {
+    let file = e.target.files[0];
+    let imageData = await getBase64(file);
+    setImageRaw({
+      raw: imageData,
+      size: file.size,
+      type: file.type,
+      id: new Date().getTime(),
+    });
   };
   return (
     <div className="chat-container">
@@ -44,6 +59,7 @@ const ChatContainer = ({ contact, chat, connection, auth }) => {
       <div className="message-container">
         <List
           itemLayout="horizontal"
+          style={{ height: '100%' }}
           dataSource={chat?.messages}
           renderItem={(item) => (
             <List.Item>
@@ -52,13 +68,32 @@ const ChatContainer = ({ contact, chat, connection, auth }) => {
                   auth.user.id === item.author ? 'r-message' : 'l-message'
                 }
               >
-                <div className="message-content">{item.content}</div>
+                <div className="message-content">
+                  {item.attachment !== 0 ? (
+                    <div>
+                      <img src={item.multimedia} alt="attachment" />
+                      <p>{item.content}</p>
+                    </div>
+                  ) : (
+                    item.content
+                  )}
+                </div>
               </div>
             </List.Item>
           )}
         />
       </div>
       <div className="input-container">
+        {imageRaw !== null && (
+          <div className="image-container">
+            <div className="trigger" onClick={() => setImageRaw(null)}>
+              <CloseCircleOutlined />
+            </div>
+            <div className="image">
+              <img src={imageRaw.raw} alt="photos" />
+            </div>
+          </div>
+        )}
         <Row justify="space-between">
           <Col xs={18} xl={20}>
             <Input
@@ -68,9 +103,10 @@ const ChatContainer = ({ contact, chat, connection, auth }) => {
             />
           </Col>
           <Col xs={6} xl={4} style={{ textAlign: 'right' }}>
-            <Button>
+            <label className="custom-file-upload">
+              <input type="file" onChange={_handleFileInput} />
               <PaperClipOutlined />
-            </Button>
+            </label>
             <Button type="primary" onClick={_handleSendMessage}>
               Enviar
             </Button>

@@ -1,5 +1,6 @@
 import bcrypt
 import os
+import base64
 from cryptography.fernet import Fernet
 
 FERNET_KEY = os.getenv('FERNET_KEY', Fernet.generate_key())
@@ -56,3 +57,8 @@ def normalizeMessages(messages):
       "created_at": message[4],
     })
   return newRecords
+def getDataUriPathImage(path, type):
+  with open(path, "rb") as img_file:
+    b64_string = base64.b64encode(img_file.read())
+  text = f"data:{type};base64,{b64_string.decode('utf-8')}"
+  return text

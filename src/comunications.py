@@ -6,8 +6,9 @@ import websockets
 import os
 import threading
 import random
+from urllib import request
 from db import DbBridge
-from utils import hashPassword, validatePassword, getUserAddress, normalizeContacts, decodeUserAddress, normalizeChats, normalizeMessages
+from utils import hashPassword, validatePassword, getUserAddress, normalizeContacts, decodeUserAddress, normalizeChats, normalizeMessages, getDataUriPathImage
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError, ConnectionClosed
 from responses import CONNECTED_RESPONSE, ERROR_AUTH, ERROR_USERNAME_EXIST, ERROR_CONTACT_EXITS
 # Env
@@ -109,16 +110,18 @@ class WebsocketServer():
       destination = decodeUserAddress(data['to'])
       author = decodeUserAddress(data['from'])
       if destination['ip'] == SERVER_URL and str(destination['port']) == str(SERVER_SK_PORT):
-
+        attachment = 0
+        if 'attachment' in data:
+          attachment = self.saveImage(data['attachment'], author['user'])
         #Generamos la conversación para el anfitrion
         if data['create_chat']:
           messageId = random.randint(0, 99999999)
           chat_id = random.randint(0, 99999999)
           db.query(f"INSERT INTO chat VALUES({chat_id}, '{author['user']}', '{data['contact_id']}'  )")
-          db.query(f"INSERT INTO message VALUES({messageId}, '{data['content']}', 0, '{author['user']}', {data['created_at']}, {chat_id} )")
+          db.query(f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {chat_id} )")
         else:
           messageId = random.randint(0, 99999999)
-          db.query(f"INSERT INTO message VALUES({messageId}, '{data['content']}', 0, '{author['user']}', {data['created_at']}, {data['chat_id']} )")
+          db.query(f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {data['chat_id']} )")
         chat_id_foreing = db.getOne(f"SELECT * FROM chat WHERE user_id={destination['user']}")
         if chat_id_foreing == None:
           #Creamos el chat
@@ -126,10 +129,10 @@ class WebsocketServer():
           messageId = random.randint(0, 99999999)
           contact = db.getOne(f"SELECT * FROM contact WHERE user_id={destination['user']}")
           db.query(f"INSERT INTO chat VALUES({chat_id}, '{destination['user']}', '{contact[0]}'  )")
-          db.query(f"INSERT INTO message VALUES({messageId}, '{data['content']}', 0, '{author['user']}', {data['created_at']}, {chat_id} )")
+          db.query(f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {chat_id} )")
         else:
           messageId = random.randint(0, 99999999)
-          db.query(f"INSERT INTO message VALUES({messageId}, '{data['content']}', 0, '{author['user']}', {data['created_at']}, {chat_id_foreing[0]} )")
+          db.query(f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {chat_id_foreing[0]} )")
         db.close()
         try:
           if connectionsClients[str(destination['user'])] != None:
@@ -227,12 +230,31 @@ class WebsocketServer():
       for chat in chats:
         messages = db.getAll(f"SELECT * FROM message WHERE chat_id={chat['id']} ORDER BY created_at")
         chat['messages'] = normalizeMessages(messages)
+        for msg in chat['messages']:
+          if msg['attachment'] != 0:
+            multimedia = db.getOne(f"SELECT path, type FROM multimedia WHERE id={msg['attachment']}")
+            msg['multimedia'] = getDataUriPathImage(multimedia[0], multimedia[1])
       await ws.send(json.dumps({
           "status": "ok",
           "type": "getChatsSuccessful",
           "response": chats
         }))
       db.close()
+    def saveImage(self, attachment, user_id):
+      extension = '.png'
+      multimedia_id = random.randint(0, 99999999)
+      db = DbBridge()
+      if attachment['type'] == 'image/jpg':
+        extension = '.jpg'
+      path = f"./multimedia/{attachment['id']}{extension}"
+      response = request.urlopen(attachment['raw'])
+      with open(path, 'wb') as f:
+        f.write(response.file.read())
+        f.close()
+      db.query(f"INSERT INTO multimedia VALUES({multimedia_id}, '{attachment['type']}', '{attachment['size']}', {user_id}, {attachment['id']}, '{path}')")
+      db.close()
+      return  multimedia_id
+
 class SocketServer():
     def __init__(self):
         try:
