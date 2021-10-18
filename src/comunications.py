@@ -6,6 +6,7 @@ import websockets
 import os
 import threading
 import random
+from config import connectionsClients
 from urllib import request
 from db import DbBridge
 from utils import hashPassword, validatePassword, getUserAddress, normalizeContacts, decodeUserAddress, normalizeChats, normalizeMessages, getDataUriPathImage
@@ -19,7 +20,6 @@ BUFFER_SIZE = 4096
 # Setup logging
 logging.basicConfig(filename='system.log')
 
-connectionsClients = {}
 
 
 class WebsocketServer():

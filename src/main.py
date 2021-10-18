@@ -2,6 +2,7 @@ import multiprocessing
 from db import DbBridge
 from comunications import SocketServer, WebsocketServer
 
+
 if __name__ == "__main__":
     db = DbBridge()
     db.initDB()
