@@ -6,7 +6,6 @@ import websockets
 import os
 import threading
 import random
-from config import connectionsClients
 from urllib import request
 from db import DbBridge
 from utils import hashPassword, validatePassword, getUserAddress, normalizeContacts, decodeUserAddress, normalizeChats, normalizeMessages, getDataUriPathImage
@@ -21,10 +20,12 @@ BUFFER_SIZE = 4096
 logging.basicConfig(filename='system.log')
 
 
-
 class WebsocketServer():
+    def __init__(self, connections):
+        self.connections = connections
     # Start asyncio process
-    def run(self):
+
+    def run(self, ):
         print('starting Websocket')
         logging.info("Starting Websocket service")
         server = websockets.serve(self.listen, SERVER_URL, SERVER_WS_PORT)
@@ -50,7 +51,6 @@ class WebsocketServer():
     # Main handler
 
     def requestHandler(self, websocket, request):
-        global connectionsClients
         if request['option'] == 'message':
             _thread = threading.Thread(target=asyncio.run, args=(
                 self.messageHandler(websocket, request['data']),))
@@ -67,9 +67,9 @@ class WebsocketServer():
             _thread.start()
             _thread.join()
         elif request['option'] == 'connect':
-            connectionsClients[str(request['data'])] = websocket
+            self.connections[str(request['data'])] = websocket
         elif request['option'] == 'disconnect':
-            del connectionsClients[str(request['data'])]
+            del self.connections[str(request['data'])]
         elif request['option'] == 'add-contact':
             _thread = threading.Thread(target=asyncio.run, args=(
                 self.addContact(websocket, request['data']),))
@@ -160,10 +160,9 @@ class WebsocketServer():
                     f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {chat_id_foreing[0]} )")
             db.close()
             try:
-                global connectionsClients
-                if connectionsClients[str(destination['user'])] != None:
+                if self.connections[str(destination['user'])] != None:
                     data['user_id'] = destination['user']
-                    await self.getChats(connectionsClients[str(destination['user'])], data)
+                    await self.getChats(self.connections[str(destination['user'])], data)
             except KeyError:
                 logging.info('El usuario no esta disponible')
 
@@ -249,10 +248,9 @@ class WebsocketServer():
         origin = decodeUserAddress(data['destination'])
         if origin['ip'] == SERVER_URL and str(origin['port']) == str(SERVER_SK_PORT):
             try:
-                global connectionsClients
-                if connectionsClients[str(origin['user'])] != None:
+                if self.connections[str(origin['user'])] != None:
                     print('El usuario esta connectado')
-                    await connectionsClients[str(origin['user'])].send(json.dumps({
+                    await self.connections[str(origin['user'])].send(json.dumps({
                         "status": "ok",
                         "type": "connectionRequest",
                         "response": data['from']
@@ -283,15 +281,14 @@ class WebsocketServer():
         db.query(f"UPDATE contact SET status = 1 WHERE id = {contact_id} ")
         db.close()
         try:
-            global connectionsClients
-            if connectionsClients[str(target['user'])] != None:
+            if self.connections[str(target['user'])] != None:
                 data['user_id'] = target['user']
-                await connectionsClients[str(target['user'])].send(json.dumps({
+                await self.connections[str(target['user'])].send(json.dumps({
                     "status": "ok",
                     "type": "connectionRequestAccepted",
                     "response": "Se ha aceptado la solicitud de comunicación"
                 }))
-                await self.getContacts(connectionsClients[str(target['user'])], data)
+                await self.getContacts(self.connections[str(target['user'])], data)
         except KeyError:
             logging.info('El usuario no esta disponible')
 
@@ -335,7 +332,8 @@ class WebsocketServer():
 
 
 class SocketServer():
-    def __init__(self):
+    def __init__(self, connections):
+        self.connections = connections
         try:
             self.socket_instance = socket.socket(
                 socket.AF_INET, socket.SOCK_STREAM)
@@ -411,8 +409,7 @@ class SocketServer():
                 f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {chat_id_foreing[0]} )")
         db.close()
         try:
-            global connectionsClients
-            if connectionsClients[str(destination['user'])] != None:
+            if self.connections[str(destination['user'])] != None:
                 data['user_id'] = destination['user']
                 # get chats
         except KeyError:
@@ -422,10 +419,9 @@ class SocketServer():
         origin = decodeUserAddress(data['destination'])
         print(data)
         try:
-            global connectionsClients
-            if connectionsClients[str(origin['user'])] != None:
+            if self.connections[str(origin['user'])] != None:
                 logging.info('El usuario esta connectado')
-                await connectionsClients[str(origin['user'])].send(json.dumps({
+                await self.connections[str(origin['user'])].send(json.dumps({
                     "status": "ok",
                     "type": "connectionRequest",
                     "response": data['from']
@@ -443,8 +439,7 @@ class SocketServer():
                 # in this case, we'll pretend this is a threaded server
                 request = clientsocket.recv(BUFFER_SIZE).decode()
                 parsedReq = json.loads(request)
-                global connectionsClients
-                print(connectionsClients)
+                print(self.connections)
                 if parsedReq['option'] == 'message':
                     # Process menssage
                     _thread = threading.Thread(target=asyncio.run, args=(
