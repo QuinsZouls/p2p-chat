@@ -13,3 +13,8 @@ ERROR_AUTH = {
   "type": "error",
   "response": "Username o contraseña incorrectos"
 }
+ERROR_CONTACT_EXITS = {
+  "status": "error-5",
+  "type": "error-contact",
+  "response": "El contacto ya se encuentra en su lista de registros"
+}
