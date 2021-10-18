@@ -12,8 +12,8 @@ from utils import hashPassword, validatePassword, getUserAddress, normalizeConta
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError, ConnectionClosed
 from responses import CONNECTED_RESPONSE, ERROR_AUTH, ERROR_USERNAME_EXIST, ERROR_CONTACT_EXITS
 # Env
-SERVER_WS_PORT = os.getenv('SERVER_WS_PORT', 6789)
-SERVER_SK_PORT = os.getenv('SERVER_WS_PORT', 6790)
+SERVER_WS_PORT = int(os.getenv('SERVER_WS_PORT', 6789))
+SERVER_SK_PORT = int(os.getenv('SERVER_SK_PORT', 6790))
 SERVER_URL = os.getenv('SERVER_URL', "127.0.0.1")
 BUFFER_SIZE = 4096
 # Setup logging

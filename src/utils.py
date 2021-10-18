@@ -4,7 +4,7 @@ import base64
 from cryptography.fernet import Fernet
 
 FERNET_KEY = os.getenv('FERNET_KEY', Fernet.generate_key())
-SERVER_SK_PORT = os.getenv('SERVER_WS_PORT', 6790)
+SERVER_SK_PORT = int(os.getenv('SERVER_SK_PORT', 6790))
 HOST = os.getenv('HOST', '127.0.0.1')
 
 
