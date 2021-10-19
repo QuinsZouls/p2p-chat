@@ -96,6 +96,11 @@ class WebsocketServer():
                 self.getChats(websocket, request['data']),))
             _thread.start()
             _thread.join()
+        elif request['option'] == 'incoming-message':
+            _thread = threading.Thread(target=asyncio.run, args=(
+                self.incomingMessage(websocket, request['data']),))
+            _thread.start()
+            _thread.join()
 
     async def auth(self, ws, data):
         db = DbBridge()
@@ -273,25 +278,36 @@ class WebsocketServer():
     async def acceptCommunication(self, ws, data):
         db = DbBridge()
         origin = decodeUserAddress(data['user_address'])
-        target = decodeUserAddress(data['address'])
-        data['user_id'] = origin['user']
-        db.query(
-            f"UPDATE contact SET status = 1 WHERE id = {data['contact_id']} ")
+        target = decodeUserAddress(data['address'])  # Dirección de destino
+        if target['ip'] == SERVER_URL and str(target['port']) == str(SERVER_SK_PORT):
+            data['user_id'] = origin['user']
+            db.query(
+                f"UPDATE contact SET status = 1 WHERE id = {data['contact_id']} ")
 
-        contact_id = await self.addContact(ws, data)
-        db.query(f"UPDATE contact SET status = 1 WHERE id = {contact_id} ")
-        db.close()
-        try:
-            if self.connections[str(target['user'])] != None:
-                data['user_id'] = target['user']
-                await self.connections[str(target['user'])].send(json.dumps({
-                    "status": "ok",
-                    "type": "connectionRequestAccepted",
-                    "response": "Se ha aceptado la solicitud de comunicación"
-                }))
-                await self.getContacts(self.connections[str(target['user'])], data)
-        except KeyError:
-            logging.info('El usuario no esta disponible')
+            contact_id = await self.addContact(ws, data)
+            db.query(f"UPDATE contact SET status = 1 WHERE id = {contact_id} ")
+            db.close()
+            try:
+                if self.connections[str(target['user'])] != None:
+                    data['user_id'] = target['user']
+                    await self.connections[str(target['user'])].send(json.dumps({
+                        "status": "ok",
+                        "type": "connectionRequestAccepted",
+                        "response": "Se ha aceptado la solicitud de comunicación"
+                    }))
+                    await self.getContacts(self.connections[str(target['user'])], data)
+            except KeyError:
+                logging.info('El usuario no esta disponible')
+        else:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            # Connect to foreing node
+            s.connect((target['ip'], int(target['port'])))
+
+            s.send(json.dumps({
+                "option": "accept-communication-request",
+                "data": data
+            }).encode())
+            print("Mensaje enviado")
 
     async def getChats(self, ws, data):
         db = DbBridge()
@@ -330,6 +346,13 @@ class WebsocketServer():
             f"INSERT INTO multimedia VALUES({multimedia_id}, '{attachment['type']}', '{attachment['size']}', {user_id}, {attachment['id']}, '{path}')")
         db.close()
         return multimedia_id, path
+
+    async def incomingMessage(self, data):
+        try:
+            if self.connections[str(data['user_id'])] != None:
+                await self.getChats(self.connections[str(data['user_id'])], data)
+        except KeyError:
+            logging.info('El usuario no esta disponible')
 
 
 class SocketServer():
@@ -409,22 +432,42 @@ class SocketServer():
             db.query(
                 f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {chat_id_foreing[0]} )")
         db.close()
+
         try:
-            if self.connections[str(destination['user'])] != None:
-                data['user_id'] = destination['user']
-                # get chats
+            ws_client = create_connection(
+                f"ws://{SERVER_URL}:{SERVER_WS_PORT}/")
+            ws_client.send(json.dumps({
+                "option": "incoming-message",
+                "data": {
+                    "user_id": destination['user']
+                }
+            }))
+            ws_client.close()
+            client.close()
         except KeyError:
             logging.info('El usuario no esta disponible')
 
     async def enableComunication(self, client, data):
-        origin = decodeUserAddress(data['destination'])
-        print(data)
         try:
-            ws_client = create_connection(f"ws://{SERVER_URL}:{SERVER_WS_PORT}/")
+            ws_client = create_connection(
+                f"ws://{SERVER_URL}:{SERVER_WS_PORT}/")
             ws_client.send(json.dumps({
-                    "option": "communication-request",
-                    "data": data
-                }))
+                "option": "communication-request",
+                "data": data
+            }))
+            ws_client.close()
+            client.close()
+        except KeyError:
+            logging.info('El usuario no esta disponible')
+
+    async def acceptCommunicationRequest(self, client, data):
+        try:
+            ws_client = create_connection(
+                f"ws://{SERVER_URL}:{SERVER_WS_PORT}/")
+            ws_client.send(json.dumps({
+                "option": "accept-communication-request",
+                "data": data
+            }))
             ws_client.close()
             client.close()
         except KeyError:
@@ -451,6 +494,12 @@ class SocketServer():
                         self.enableComunication(clientsocket, parsedReq['data']),))
                     _thread.start()
                     _thread.join()
+                elif parsedReq['option'] == 'accept-communication-request':
+                    _thread = threading.Thread(target=asyncio.run, args=(
+                        self.acceptCommunicationRequest(clientsocket, parsedReq['data']),))
+                    _thread.start()
+                    _thread.join()
+
             except KeyboardInterrupt:
                 self.stop()
             except:
