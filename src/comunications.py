@@ -279,14 +279,14 @@ class WebsocketServer():
         db = DbBridge()
         origin = decodeUserAddress(data['user_address'])
         target = decodeUserAddress(data['address'])  # Dirección de destino
-        if target['ip'] == SERVER_URL and str(target['port']) == str(SERVER_SK_PORT):
-            data['user_id'] = origin['user']
-            db.query(
-                f"UPDATE contact SET status = 1 WHERE id = {data['contact_id']} ")
+        data['user_id'] = origin['user']
+        db.query(
+            f"UPDATE contact SET status = 1 WHERE id = {data['contact_id']} ")
 
-            contact_id = await self.addContact(ws, data)
-            db.query(f"UPDATE contact SET status = 1 WHERE id = {contact_id} ")
-            db.close()
+        contact_id = await self.addContact(ws, data)
+        db.query(f"UPDATE contact SET status = 1 WHERE id = {contact_id} ")
+        db.close()
+        if target['ip'] == SERVER_URL and str(target['port']) == str(SERVER_SK_PORT):
             try:
                 if self.connections[str(target['user'])] != None:
                     data['user_id'] = target['user']
@@ -482,7 +482,7 @@ class SocketServer():
                 # in this case, we'll pretend this is a threaded server
                 request = clientsocket.recv(BUFFER_SIZE).decode()
                 parsedReq = json.loads(request)
-                print(self.connections)
+                print(parsedReq)
                 if parsedReq['option'] == 'message':
                     # Process menssage
                     _thread = threading.Thread(target=asyncio.run, args=(
