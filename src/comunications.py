@@ -401,6 +401,13 @@ class SocketServer():
                 else:
                     print('Unknown contact')
                 db.close()
+            else:
+                messageId = random.randint(0, 99999999)
+                chat_id = random.randint(0, 99999999)
+                db.query(
+                    f"INSERT INTO chat VALUES({chat_id}, '{author['user']}', '{data['contact_id']}'  )")
+                db.query(
+                    f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{destination['user']}', {data['created_at']}, {chat_id} )")
         else:
             print('Contacto no existente')
         try:
@@ -450,9 +457,13 @@ class SocketServer():
                 (clientsocket, address) = self.socket_instance.accept()
                 # now do something with the clientsocket
                 # in this case, we'll pretend this is a threaded server
-                request = clientsocket.recv(BUFFER_SIZE).decode()
+                request = ''
+                while True:
+                    chunk = clientsocket.recv(BUFFER_SIZE).decode()
+                    if not chunk:
+                        break;
+                    request = request + chunk
                 parsedReq = json.loads(request)
-                print(parsedReq)
                 if parsedReq['option'] == 'message':
                     # Process menssage
                     _thread = threading.Thread(target=asyncio.run, args=(
