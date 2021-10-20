@@ -98,7 +98,7 @@ class WebsocketServer():
             _thread.join()
         elif request['option'] == 'incoming-message':
             _thread = threading.Thread(target=asyncio.run, args=(
-                self.incomingMessage(websocket, request['data']),))
+                self.incomingMessage(request['data']),))
             _thread.start()
             _thread.join()
 
@@ -382,50 +382,34 @@ class SocketServer():
 
     async def handleMessage(self, client, data):
         db = DbBridge()
-        destination = decodeUserAddress(data['to'])
-        author = decodeUserAddress(data['from'])
+        destination = decodeUserAddress(data['from'])
+        author = decodeUserAddress(data['to'])
         attachment = 0
         if 'attachment' in data:
             attachment = self.recvFile(
                 client, data['attachment'], author['user'])
-        # Generamos la conversación para el anfitrion
-        if data['create_chat']:
-            messageId = random.randint(0, 99999999)
-            chat_id = random.randint(0, 99999999)
-            db.query(
-                f"INSERT INTO chat VALUES({chat_id}, '{author['user']}', '{data['contact_id']}'  )")
-            db.query(
-                f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {chat_id} )")
-        else:
-            contact = db.getOne(
-                f"SELECT * FROM contact WHERE user_id={author['user']} and destination='{data['to']}'")
-            if contact != None:
-                chat_id_foreing = db.getOne(
-                    f"SELECT * FROM chat WHERE user_id={author['user']} and contact_id={contact[0]}")
-                if chat_id_foreing == None:
-                    # Creamos el chat
-                    chat_id = random.randint(0, 99999999)
+        contact = db.getOne(
+            f"SELECT * FROM contact WHERE user_id={author['user']} and destination='{data['from']}'")
+        if contact != None:
+            chat = db.getOne(
+                f"SELECT * FROM chat WHERE user_id={author['user']} and contact_id='{contact[0]}'")
+            if chat != None:
+                if contact != None:
                     messageId = random.randint(0, 99999999)
                     db.query(
-                        f"INSERT INTO chat VALUES({chat_id}, '{destination['user']}', '{contact[0]}'  )")
-                    db.query(
-                        f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {chat_id} )")
+                        f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {chat[0]} )")
                 else:
-                    messageId = random.randint(0, 99999999)
-                    db.query(
-                        f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {chat_id_foreing[0]} )")
-            else:
-                messageId = random.randint(0, 99999999)
-                db.query(
-                    f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {data['chat_id']} )")
-            db.close()
+                    print('Unknown contact')
+                db.close()
+        else:
+            print('Contacto no existente')
         try:
             ws_client = create_connection(
                 f"ws://{SERVER_URL}:{SERVER_WS_PORT}/")
             ws_client.send(json.dumps({
                 "option": "incoming-message",
                 "data": {
-                    "user_id": destination['user']
+                    "user_id": author['user']
                 }
             }))
             ws_client.close()
