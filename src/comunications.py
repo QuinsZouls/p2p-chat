@@ -397,7 +397,7 @@ class SocketServer():
                 if contact != None:
                     messageId = random.randint(0, 99999999)
                     db.query(
-                        f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {chat[0]} )")
+                        f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{destination['user']}', {data['created_at']}, {chat[0]} )")
                 else:
                     print('Unknown contact')
                 db.close()
