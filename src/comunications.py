@@ -399,9 +399,9 @@ class SocketServer():
             db.query(
                 f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {data['chat_id']} )")
         contact = db.getOne(
-            f"SELECT * FROM contact WHERE user_id={destination['user']} and destination='{data['to']}'")
+            f"SELECT * FROM contact WHERE user_id={author['user']} and destination='{data['to']}'")
         chat_id_foreing = db.getOne(
-            f"SELECT * FROM chat WHERE user_id={destination['user']} and contact_id={contact[0]}")
+            f"SELECT * FROM chat WHERE user_id={author['user']} and contact_id={contact[0]}")
         if chat_id_foreing == None:
             # Creamos el chat
             chat_id = random.randint(0, 99999999)
