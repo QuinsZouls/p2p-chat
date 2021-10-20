@@ -165,8 +165,26 @@ class WebsocketServer():
                 messageId = random.randint(0, 99999999)
                 db.query(
                     f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {data['chat_id']} )")
-            db.close()
+
         if destination['ip'] == SERVER_URL and str(destination['port']) == str(SERVER_SK_PORT):
+            # generamos la conversación para el target
+            contact = db.getOne(
+                f"SELECT * FROM contact WHERE user_id={destination['user']} and destination='{data['from']}'")
+            if contact != None:
+                chat_id_foreing = db.getOne(
+                    f"SELECT * FROM chat WHERE user_id={destination['user']} and contact_id={contact[0]}")
+                if chat_id_foreing == None:
+                    # Creamos el chat
+                    chat_id = random.randint(0, 99999999)
+                    messageId = random.randint(0, 99999999)
+                    db.query(
+                        f"INSERT INTO chat VALUES({chat_id}, '{destination['user']}', '{contact[0]}'  )")
+                    db.query(
+                        f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {chat_id} )")
+                else:
+                    messageId = random.randint(0, 99999999)
+                    db.query(
+                        f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {chat_id_foreing[0]} )")
             try:
                 if self.connections[str(destination['user'])] != None:
                     data['user_id'] = destination['user']
@@ -189,6 +207,7 @@ class WebsocketServer():
             await self.getChats(self.connections[str(author['user'])], {
                 "user_id":  author['user']
             })
+        db.close()
 
     async def registerUser(self, ws, data):
         db = DbBridge()
@@ -405,7 +424,7 @@ class SocketServer():
                 messageId = random.randint(0, 99999999)
                 chat_id = random.randint(0, 99999999)
                 db.query(
-                    f"INSERT INTO chat VALUES({chat_id}, '{author['user']}', '{data['contact_id']}'  )")
+                    f"INSERT INTO chat VALUES({chat_id}, '{author['user']}', '{contact[0]}'  )")
                 db.query(
                     f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{destination['user']}', {data['created_at']}, {chat_id} )")
         else:
@@ -461,7 +480,7 @@ class SocketServer():
                 while True:
                     chunk = clientsocket.recv(BUFFER_SIZE).decode()
                     if not chunk:
-                        break;
+                        break
                     request = request + chunk
                 parsedReq = json.loads(request)
                 if parsedReq['option'] == 'message':
