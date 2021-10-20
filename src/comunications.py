@@ -149,21 +149,22 @@ class WebsocketServer():
                 f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {data['chat_id']} )")
         contact = db.getOne(
             f"SELECT * FROM contact WHERE user_id={author['user']} and destination='{data['to']}'")
-        chat_id_foreing = db.getOne(
-            f"SELECT * FROM chat WHERE user_id={author['user']} and contact_id={contact[0]}")
-        if chat_id_foreing == None:
-            # Creamos el chat
-            chat_id = random.randint(0, 99999999)
-            messageId = random.randint(0, 99999999)
-            db.query(
-                f"INSERT INTO chat VALUES({chat_id}, '{destination['user']}', '{contact[0]}'  )")
-            db.query(
-                f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {chat_id} )")
-        else:
-            messageId = random.randint(0, 99999999)
-            db.query(
-                f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {chat_id_foreing[0]} )")
-        db.close()
+        if contact != None:
+            chat_id_foreing = db.getOne(
+                f"SELECT * FROM chat WHERE user_id={author['user']} and contact_id={contact[0]}")
+            if chat_id_foreing == None:
+                # Creamos el chat
+                chat_id = random.randint(0, 99999999)
+                messageId = random.randint(0, 99999999)
+                db.query(
+                    f"INSERT INTO chat VALUES({chat_id}, '{destination['user']}', '{contact[0]}'  )")
+                db.query(
+                    f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {chat_id} )")
+            else:
+                messageId = random.randint(0, 99999999)
+                db.query(
+                    f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {chat_id_foreing[0]} )")
+            db.close()
         if destination['ip'] == SERVER_URL and str(destination['port']) == str(SERVER_SK_PORT):
             try:
                 if self.connections[str(destination['user'])] != None:
@@ -400,21 +401,22 @@ class SocketServer():
                 f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {data['chat_id']} )")
         contact = db.getOne(
             f"SELECT * FROM contact WHERE user_id={author['user']} and destination='{data['to']}'")
-        chat_id_foreing = db.getOne(
-            f"SELECT * FROM chat WHERE user_id={author['user']} and contact_id={contact[0]}")
-        if chat_id_foreing == None:
-            # Creamos el chat
-            chat_id = random.randint(0, 99999999)
-            messageId = random.randint(0, 99999999)
-            db.query(
-                f"INSERT INTO chat VALUES({chat_id}, '{destination['user']}', '{contact[0]}'  )")
-            db.query(
-                f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {chat_id} )")
-        else:
-            messageId = random.randint(0, 99999999)
-            db.query(
-                f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {chat_id_foreing[0]} )")
-        db.close()
+        if contact != None:
+            chat_id_foreing = db.getOne(
+                f"SELECT * FROM chat WHERE user_id={author['user']} and contact_id={contact[0]}")
+            if chat_id_foreing == None:
+                # Creamos el chat
+                chat_id = random.randint(0, 99999999)
+                messageId = random.randint(0, 99999999)
+                db.query(
+                    f"INSERT INTO chat VALUES({chat_id}, '{destination['user']}', '{contact[0]}'  )")
+                db.query(
+                    f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {chat_id} )")
+            else:
+                messageId = random.randint(0, 99999999)
+                db.query(
+                    f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {chat_id_foreing[0]} )")
+            db.close()
 
         try:
             ws_client = create_connection(
