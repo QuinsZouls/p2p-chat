@@ -147,14 +147,14 @@ class WebsocketServer():
             messageId = random.randint(0, 99999999)
             db.query(
                 f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {data['chat_id']} )")
+        contact = db.getOne(
+            f"SELECT * FROM contact WHERE user_id={destination['user']} and destination='{data['to']}'")
         chat_id_foreing = db.getOne(
-            f"SELECT * FROM chat WHERE user_id={destination['user']}")
+            f"SELECT * FROM chat WHERE user_id={destination['user']} and contact_id={contact[0]}")
         if chat_id_foreing == None:
             # Creamos el chat
             chat_id = random.randint(0, 99999999)
             messageId = random.randint(0, 99999999)
-            contact = db.getOne(
-                f"SELECT * FROM contact WHERE user_id={destination['user']}")
             db.query(
                 f"INSERT INTO chat VALUES({chat_id}, '{destination['user']}', '{contact[0]}'  )")
             db.query(
@@ -179,28 +179,11 @@ class WebsocketServer():
             # Connect to foreing node
             s.connect((destination['ip'], int(destination['port'])))
 
-            if 'attachment' in data:
-                s.send(json.dumps({
-                    "option": "message",
-                    "data": data
-                }).encode(), BUFFER_SIZE)
-                attachment, path = self.saveImage(
-                    data['attachment'], author['user'])
-                with open(path, "rb") as f:
-                    while True:
-                        # read the bytes from the file
-                        bytes_read = f.read(BUFFER_SIZE)
-                        if not bytes_read:
-                            # file transmitting is done
-                            break
-                        # we use sendall to assure transimission in
-                        s.sendall(bytes_read)
-                del data['attachment']['raw']
-            else:
-                s.send(json.dumps({
-                    "option": "message",
-                    "data": data
-                }).encode(), BUFFER_SIZE)
+            s.sendall(json.dumps({
+                "option": "message",
+                "data": data
+            }).encode())
+
             await self.getChats(self.connections[str(author['user'])], {
                 "user_id":  author['user']
             })
@@ -385,13 +368,10 @@ class SocketServer():
         if data['type'] == 'image/jpg':
             extension = '.jpg'
         path = f"./multimedia/{data['id']}{extension}"
-        with open(path, "wb") as f:
-            while True:
-                # read 1024 bytes from the socket (receive)
-                bytes_read = client.recv(BUFFER_SIZE)
-                if not bytes_read:
-                    break
-                f.write(bytes_read)
+        response = request.urlopen(data['raw'])
+        with open(path, 'wb') as f:
+            f.write(response.file.read())
+            f.close()
         client.close()
         db.query(
             f"INSERT INTO multimedia VALUES({multimedia_id}, '{data['type']}', '{data['size']}', {user_id}, {data['id']}, '{path}')")
@@ -418,14 +398,14 @@ class SocketServer():
             messageId = random.randint(0, 99999999)
             db.query(
                 f"INSERT INTO message VALUES({messageId}, '{data['content']}', {attachment}, '{author['user']}', {data['created_at']}, {data['chat_id']} )")
+        contact = db.getOne(
+            f"SELECT * FROM contact WHERE user_id={destination['user']} and destination='{data['to']}'")
         chat_id_foreing = db.getOne(
-            f"SELECT * FROM chat WHERE user_id={destination['user']}")
+            f"SELECT * FROM chat WHERE user_id={destination['user']} and contact_id={contact[0]}")
         if chat_id_foreing == None:
             # Creamos el chat
             chat_id = random.randint(0, 99999999)
             messageId = random.randint(0, 99999999)
-            contact = db.getOne(
-                f"SELECT * FROM contact WHERE user_id={destination['user']}")
             db.query(
                 f"INSERT INTO chat VALUES({chat_id}, '{destination['user']}', '{contact[0]}'  )")
             db.query(
